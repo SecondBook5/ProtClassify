@@ -1,0 +1,27 @@
+flowchart TD
+    A[Start: Preprocessed Feature Dataset (Base + Pfam + ProtLearn + Peptide + Embeddings)] --> B[Dataset Splitting]
+    B --> C1[Train/Test Split (80/20)]
+    B --> C2[Holdout Evaluation Set (No Labels)]
+    
+    C1 --> D[GridSearchCV (5-fold)]
+    D --> E[Optuna Fine-tuning (5-fold)]
+    
+    E --> F1[Random Forest (Optimized)]
+    E --> F2[XGBoost (Optimized)]
+    E --> F3[MLP Neural Network (Optimized)]
+    E --> F4[TabNet (Optimized)]
+
+    F1 & F2 & F3 & F4 --> G1[Soft Voting Ensemble]
+    G1 --> G2[Stacking Ensemble (Meta-learner: LogisticRegression or LightGBM)]
+
+    G2 --> H1[5-fold Cross-validation Score (Final Model Check)]
+    H1 --> H2[10-fold Cross-validation Lock-in (Optional)]
+    
+    G2 --> I[SHAP Explainability Analysis]
+    
+    H2 --> J1[Prediction on Evaluation Set]
+    I --> J1
+    
+    J1 --> K[Prepare Submission CSV]
+
+    K --> L[Leaderboard Submission]
