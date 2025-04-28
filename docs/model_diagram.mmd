@@ -1,27 +1,65 @@
-flowchart TD
-    A[Start: Preprocessed Feature Dataset (Base + Pfam + ProtLearn + Peptide + Embeddings)] --> B[Dataset Splitting]
-    B --> C1[Train/Test Split (80/20)]
-    B --> C2[Holdout Evaluation Set (No Labels)]
-    
-    C1 --> D[GridSearchCV (5-fold)]
-    D --> E[Optuna Fine-tuning (5-fold)]
-    
-    E --> F1[Random Forest (Optimized)]
-    E --> F2[XGBoost (Optimized)]
-    E --> F3[MLP Neural Network (Optimized)]
-    E --> F4[TabNet (Optimized)]
 
-    F1 & F2 & F3 & F4 --> G1[Soft Voting Ensemble]
-    G1 --> G2[Stacking Ensemble (Meta-learner: LogisticRegression or LightGBM)]
+flowchart TB
+  %%=== Feature Compression Layer ===
+  subgraph "Feature Compression" 
+    direction LR
+    PCA[PCA<br/>(0.99 Variance)]
+    LASSO[Lasso<br/>(L1 Selection)]
+    MCMC[MCMC<br/>(Bayesian Selection)]
+    VAE[VAE<br/>(Latent Encoding)]
+    PCA --> LASSO --> MCMC --> VAE
+  end
 
-    G2 --> H1[5-fold Cross-validation Score (Final Model Check)]
-    H1 --> H2[10-fold Cross-validation Lock-in (Optional)]
-    
-    G2 --> I[SHAP Explainability Analysis]
-    
-    H2 --> J1[Prediction on Evaluation Set]
-    I --> J1
-    
-    J1 --> K[Prepare Submission CSV]
+  %%=== Meta-Learner Layer ===
+  subgraph "TabNet Meta-Learner"
+    direction TB
+    VAE --> TABNET[TabNet<br/>Meta-Learner]
+    MCMC --> TABNET
+    LASSO --> TABNET
+    PCA --> TABNET
+  end
 
-    K --> L[Leaderboard Submission]
+  %%=== Base Model Training ===
+  subgraph "Base Models"
+    direction LR
+    TABNET --> RF[Random Forest]
+    TABNET --> XGB[XGBoost]
+    TABNET --> MLP[MLP Neural Net]
+  end
+
+  %%=== Hyperparameter Tuning ===
+  subgraph "Hyperparameter Tuning"
+    direction LR
+    %% RF
+    RF --> RF_BL[RF Baseline]
+    RF_BL --> RF_RS[RF RandomizedSearchCV]
+    RF_RS --> RF_GS[RF GridSearchCV]
+    RF_GS --> RF_OP[RF Optuna]
+
+    %% XGB
+    XGB --> XGB_BL[XGB Baseline]
+    XGB_BL --> XGB_RS[XGB RandomizedSearchCV]
+    XGB_RS --> XGB_GS[XGB GridSearchCV]
+    XGB_GS --> XGB_OP[XGB Optuna]
+
+    %% MLP
+    MLP --> MLP_BL[MLP Baseline]
+    MLP_BL --> MLP_OP[MLP Optuna]
+  end
+
+  %%=== Ensembling ===
+  subgraph "Ensembling"
+    direction LR
+    RF_OP --> SV[Soft Voting]
+    XGB_OP --> SV
+    MLP_OP --> SV
+    SV --> STK[Stacking<br/>(LightGBM)]
+  end
+
+  %%=== Explainability & Validation ===
+  subgraph "Explain & Validate"
+    direction LR
+    STK --> SHAP[SHAP Feature Importance]
+    STK --> MCN[McNemar's Test]
+  end
+

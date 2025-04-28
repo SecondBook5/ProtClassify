@@ -1,75 +1,70 @@
 # Protein Classification Challenge
 
-# Protein Function Classification – Full Project Plan
+A two-layered, data-driven strategy for protein function classification that balances interpretability, non-linear representation, and ensemble robustness.
 
-## Single Model Training
+---
 
-| Model | Flow |
-|:---|:---|
-| Random Forest | Baseline Fit → RandomizedSearchCV (5-Fold) → GridSearchCV (5-Fold) → Optuna Bayesian Optimization → Save Best Model → Predict Evaluation Set |
-| XGBoost | Baseline Fit → RandomizedSearchCV (5-Fold) → GridSearchCV (5-Fold) → Optuna Bayesian Optimization → Save Best Model → Predict Evaluation Set |
-| Logistic Regression (Lasso) | Train with L1 Regularization → Feature Selection → Retrain if necessary → Predict Evaluation Set |
-| MLP Neural Network (GPU) | Baseline Fit → Early Stopping → RandomizedSearchCV or Optuna Bayesian Optimization → Save Best Model → Predict Evaluation Set |
-| TabNet (GPU) | Baseline Fit → Early Stopping → Optuna Bayesian Optimization → Save Best Model → Predict Evaluation Set |
+## Layer 1: Feature Compression & Meta-Learning
 
-## Ensemble Building
+**Goal:** Reduce 4,922 original features into compact, complementary representations, then learn how to weight them per sample.
 
-| Ensemble Type | Flow |
-|:---|:---|
-| Soft Voting Ensemble | Aggregate predictions from RF, XGB, LR, MLP, TabNet → Predict Evaluation Set |
-| Stacking Ridge Meta-Learner | Out-of-Fold Predictions from RF, XGB, LR, MLP, TabNet → Ridge Regression → Predict Evaluation Set |
-| Stacking LightGBM Meta-Learner | Out-of-Fold Predictions from RF, XGB, LR, MLP, TabNet → LightGBM → Predict Evaluation Set |
-| Stacking Bayesian Ridge Meta-Learner | Out-of-Fold Predictions → Bayesian Ridge → Predict Evaluation Set |
+| Pathway                 | Method                          | Output                         | Strength                                              |
+|-------------------------|---------------------------------|--------------------------------|-------------------------------------------------------|
+| Linear Compression      | PCA (retain 99% variance)       | Principal components           | Noise reduction, preserves global variance            |
+| Sparse Selection        | Lasso logistic (data-driven C)  | Subset of original features    | Hard feature pruning, biological interpretability     |
+| Bayesian Selection      | MCMC feature selection          | Probabilistic sparse subset    | Uncertainty quantification, preserves original axes   |
+| Nonlinear Compression   | VAE (Variational Autoencoder)   | Learned latent factors         | Captures complex manifolds                            |
 
-## Feature Optimization
+All four compressed representations are concatenated into a single meta-feature matrix.  
+A TabNet meta-learner is trained on these meta-features to soft-select and attend to the best feature space for each protein.
 
-| Task | Method |
-|:---|:---|
-| Ablation Studies | Systematically remove feature groups (Base, Pfam, ProtLearn, Peptides, ProtBERT, ESM2) and measure performance drop |
-| Lasso Feature Pruning | Use Logistic Regression L1 regularization to select important features and prune the feature space |
+---
 
-## Explainability
+## Layer 2: Single-Model Training & Final Ensembles
 
-| Task | Model |
-|:---|:---|
-| SHAP Values | Random Forest, XGBoost, Stacking Ensemble (optional) |
-| Feature Importance Plots | Top 20 Features for each model |
+**Base Models:** trained on TabNet-selected features from Layer 1  
 
-## Validation and Statistical Proof
+| Model                       | Pipeline                                                                                             |
+|-----------------------------|------------------------------------------------------------------------------------------------------|
+| Random Forest               | Baseline → RandomizedSearchCV → GridSearchCV → Optuna → Save → Predict                                |
+| XGBoost                     | Baseline → RandomizedSearchCV → GridSearchCV → Optuna → Save → Predict                                |
+| Logistic Regression (Lasso) | L1-penalized → Feature selection → Retrain → Predict                                                  |
+| MLP Neural Network (GPU)    | Baseline → Early stopping → Optuna → Save → Predict                                                  |
+| TabNet (GPU)                | Baseline → Early stopping → Optuna → Save → Predict                                                  |
 
-| Task | Methodology |
-|:---|:---|
-| Cross-Validation Score Monitoring | 5-Fold CV used in every tuning step, confirm stability of folds |
-| Fold Variance Analysis | Check if standard deviation across folds is low |
-| McNemar's Test | Statistically test if two models are significantly different |
-| Bootstrap Resampling | Calculate 95% confidence intervals for Accuracy and F1 |
-| Confusion Matrices | Generate and plot for each major model and ensemble |
+**Final Ensembles:**  
+- **Soft Voting:** average predicted probabilities of all base models  
+- **Stacking (LightGBM meta-learner):** learn optimal combination of base predictions  
 
-## Engineering Practices
+Why both?  
+Soft voting provides a stable baseline; stacking can squeeze extra accuracy by learning when to trust each model.
 
-| Feature | Implementation |
-|:---|:---|
-| Checkpointing | Save models after each tuning step as `.joblib` files |
-| Automatic Loading | Check if model exists before retraining |
-| Time Tracking | Decorator `@track_time` for each major operation |
-| Progress Bars | `tqdm` to show model training and tuning progress |
-| Parallelization | `n_jobs=-1` used in RandomizedSearchCV, GridSearchCV, cross_val_score, and model fitting |
-| Print Statements | Clearly indicate which stage of training, tuning, or evaluation is running |
+---
 
-## Submission Plan
+## End-to-End Workflow
 
-| Submission Type | Deliverables |
-|:---|:---|
-| Single Best Models | Random Forest, XGBoost, Logistic Regression, MLP, TabNet |
-| Ensemble Models | Soft Voting, Stacking Ridge, Stacking LightGBM, Stacking Bayesian Ridge |
-| Total CSVs | 6–8 Submission Files |
-| Format | Columns: 'Entry', 'ProteinClass' |
+1. **Data Loading & Preprocessing**  
+2. **Layer 1 – Dimensionality Reduction & Meta-Learning**  
+   - Fit PCA, Lasso, MCMC selector, VAE  
+   - Concatenate outputs → TabNet meta-learner → TabNet-selected features  
+3. **Layer 2 – Model Training**  
+   - Train RF, XGB, LR, MLP, TabNet on TabNet-selected features  
+   - Hyperparameter tuning via RandomizedSearchCV → GridSearchCV → Optuna  
+4. **Ensembling**  
+   - Generate soft-voting and stacking predictions  
+5. **Validation & Explainability**  
+   - 5-fold CV monitoring, fold-variance analysis, McNemar’s test, bootstrap confidence intervals  
+   - SHAP and feature importance plots  
+6. **Submission**  
+   - Save single-model and ensemble CSVs with `Entry, ProteinClass`  
 
-## Final Execution Order
+---
 
-1. Single Models: RF → XGB → LR → MLP → TabNet  
-2. Ensemble Models: Soft Voting → Stacking Ridge → Stacking LightGBM → Stacking Bayesian Ridge  
-3. Feature Optimization: Ablation Studies → Lasso Feature Pruning  
-4. Explainability: SHAP values and feature importance plots  
-5. Validation: Cross-validation monitoring, Fold variance analysis, McNemar’s Test, Bootstrap Resampling, Confusion Matrices  
-6. Submission: Save 6–8 formatted CSVs for competition
+## Deliverables
+
+- **Models:** `*.joblib` for each tuned model and Optuna study  
+- **Compressed datasets:** PCA, Lasso, MCMC, VAE outputs, TabNet-selected features  
+- **Predictions:** `y_pred_*.npy` and formatted CSVs  
+- **Reports:** Confusion matrices, classification reports, SHAP plots  
+
+This README captures our updated, layered strategy—leveraging both linear/sparse and nonlinear/manifold views, dynamically fused by TabNet, then ensembled across multiple model paradigms to maximize accuracy and robustness.
