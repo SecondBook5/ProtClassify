@@ -1,0 +1,6 @@
+timestamp,file_name,name,featureset,split,version,description,shape
+2025-04-29 08:51:39,X_train_full_train_v1.npy,X_train,full,train,v1,Scaled full feature set for training,"(544, 4922)"
+2025-04-29 08:51:40,X_test_full_test_v1.npy,X_test,full,test,v1,Scaled full feature set for testing,"(137, 4922)"
+2025-04-29 08:51:40,X_eval_full_eval_v1.npy,X_eval,full,eval,v1,Scaled full feature set for evaluation,"(171, 4922)"
+2025-04-29 08:51:40,y_train_full_train_v1.npy,y_train,full,train,v1,Encoded labels for training set,"(544,)"
+2025-04-29 08:51:40,y_test_full_test_v1.npy,y_test,full,test,v1,Encoded labels for testing set,"(137,)"

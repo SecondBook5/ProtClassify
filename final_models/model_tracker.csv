@@ -1,0 +1,3 @@
+timestamp,model_file,model_type,featureset,optimizer,scoremetric,version,accuracy
+2025-04-29 02:29:01,labelencoder_full_none_none_v1.joblib,labelencoder,full,none,none,v1,1.0
+
