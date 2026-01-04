@@ -1,70 +1,93 @@
-# Protein Classification Challenge
+# ProtClassify – CAFA6-ready Protein Function Prediction
 
-A two-layered, data-driven strategy for protein function classification that balances interpretability, non-linear representation, and ensemble robustness.
+A modular, competition-focused codebase for protein function prediction. The
+repository now follows a clear "src/" layout, manifest-backed IO helpers, and
+submission builders that mirror the CAFA6 format (protein → GO terms and
+optional free text).
 
----
+## Vision
+- **CAFA6 alignment:** Build reusable pipelines that can generate the GO term
+  predictions and optional free-text descriptions required by the challenge.
+- **Research-grade organization:** Source code lives under `src/protclassify`,
+  with tracked artifacts for data, models, and submissions.
+- **Reproducibility:** Every saved array, model, or submission is logged to a
+  manifest CSV to capture provenance (feature set, split, optimizer, version).
 
-## Layer 1: Feature Compression & Meta-Learning
+## Repository structure
+- `src/protclassify/paths.py` – central location for project paths and tracker
+  files.
+- `src/protclassify/data/` – FASTA parsing (`fasta.py`) and array tracking
+  (`tracking.py`) backed by manifest CSVs.
+- `src/protclassify/features/` – amino-acid composition and dipeptide features
+  for quick baselines when only primary sequences are available.
+- `src/protclassify/models/` – trainable components and registries; includes a
+  logistic-regression one-vs-rest baseline wired for multilabel GO prediction.
+- `src/protclassify/pipelines/` – opinionated pipelines that stitch together
+  data loading, feature computation, modeling, and submission generation.
+- `src/protclassify/submission/builder.py` – CAFA-style submission creators with
+  `SubmissionBuilder` and `SubmissionMetadata`.
+- `scripts/train_baseline.py` – CLI entry point to train the baseline and emit a
+  submission TSV in one step.
+- `utils/` – backward-compatible wrappers re-exporting the refactored modules
+  for existing notebooks.
+- `data/raw/` – drop the CAFA6 competition download here (see
+  `docs/DATASET_DESCRIPTION.md`).
+- `processed_data/`, `models/`, `submission/` – tracked artifact locations
+  (manifests live alongside outputs).
+- `artifacts/legacy/` – quarantined historical notebooks/arrays/models from the
+  pre-refactor code; keep new experiments in the tracked locations above.
 
-**Goal:** Reduce 4,922 original features into compact, complementary representations, then learn how to weight them per sample.
+## Getting started
+1. **Install dependencies** (example):
+   ```bash
+   pip install -r requirements.txt  # or conda env create -f environment.yml
+   ```
+2. **Train the sequence-only baseline and emit a submission**:
+   ```bash
+   python scripts/train_baseline.py data/train_targets.fasta data/train_labels.csv \
+     --id-column Entry --label-column go_terms
+   ```
+   The script will:
+   - parse the FASTA targets,
+   - compute amino-acid composition + optional dipeptide features,
+   - train a logistic-regression one-vs-rest classifier,
+   - log metrics/manifests under `models/`, and
+   - write a CAFA-style submission TSV under `submission/`.
+3. **Consume the building blocks in notebooks**:
+   ```python
+   from protclassify.data import load_fasta_as_dataframe
+   from protclassify.features import amino_acid_composition, dipeptide_frequencies
+   from protclassify.models.baseline import train_logreg_baseline
+   from protclassify.pipelines import run_baseline
+   ```
+4. **Track an intermediate array**:
+   ```python
+   from protclassify.data import ArrayMetadata, DataTracker
+   tracker = DataTracker()
+   metadata = ArrayMetadata(name="X_train", featureset="esm2", split="train", version="v1", description="ESM2 embeddings")
+   tracker.save_array(array, metadata)
+   ```
+5. **Generate a CAFA-style submission from predictions**:
+   ```python
+   from protclassify.submission.builder import SubmissionBuilder, SubmissionMetadata
+  builder = SubmissionBuilder()
+  submission_meta = SubmissionMetadata(attempt_number=1, description="Baseline ESM2 + XGBoost")
+  builder.from_predictions(y_pred=decoded_labels, entry_df=entry_df, metadata=submission_meta)
+  ```
 
-| Pathway                 | Method                          | Output                         | Strength                                              |
-|-------------------------|---------------------------------|--------------------------------|-------------------------------------------------------|
-| Linear Compression      | PCA (retain 99% variance)       | Principal components           | Noise reduction, preserves global variance            |
-| Sparse Selection        | Lasso logistic (data-driven C)  | Subset of original features    | Hard feature pruning, biological interpretability     |
-| Bayesian Selection      | MCMC feature selection          | Probabilistic sparse subset    | Uncertainty quantification, preserves original axes   |
-| Nonlinear Compression   | VAE (Variational Autoencoder)   | Learned latent factors         | Captures complex manifolds                            |
+## Data intake for CAFA6
+- Download the Kaggle CAFA6 bundle and place the raw files (e.g.,
+  `train_sequences.fasta`, `train_terms.tsv`, `IA.tsv`) under `data/raw/`.
+- See `docs/DATASET_DESCRIPTION.md` for a concise recap of the files provided by
+  the competition and how they relate to our pipelines.
 
-All four compressed representations are concatenated into a single meta-feature matrix.  
-A TabNet meta-learner is trained on these meta-features to soft-select and attend to the best feature space for each protein.
+## Next steps toward CAFA6
+- Integrate sequence encoders (e.g., ESM/ProtBERT) and ontology propagation.
+- Add training scripts under `src/` for reproducible experiments.
+- Expand evaluation tooling to compute the CAFA-weighted F1 metrics.
+- Follow the detailed roadmap in `docs/CAFA6_IMPROVEMENT_PLAN.md` for
+  data hygiene, modeling, evaluation parity, and submission hardening.
 
----
-
-## Layer 2: Single-Model Training & Final Ensembles
-
-**Base Models:** trained on TabNet-selected features from Layer 1  
-
-| Model                       | Pipeline                                                                                             |
-|-----------------------------|------------------------------------------------------------------------------------------------------|
-| Random Forest               | Baseline → RandomizedSearchCV → GridSearchCV → Optuna → Save → Predict                                |
-| XGBoost                     | Baseline → RandomizedSearchCV → GridSearchCV → Optuna → Save → Predict                                |
-| Logistic Regression (Lasso) | L1-penalized → Feature selection → Retrain → Predict                                                  |
-| MLP Neural Network (GPU)    | Baseline → Early stopping → Optuna → Save → Predict                                                  |
-| TabNet (GPU)                | Baseline → Early stopping → Optuna → Save → Predict                                                  |
-
-**Final Ensembles:**  
-- **Soft Voting:** average predicted probabilities of all base models  
-- **Stacking (LightGBM meta-learner):** learn optimal combination of base predictions  
-
-Why both?  
-Soft voting provides a stable baseline; stacking can squeeze extra accuracy by learning when to trust each model.
-
----
-
-## End-to-End Workflow
-
-1. **Data Loading & Preprocessing**  
-2. **Layer 1 – Dimensionality Reduction & Meta-Learning**  
-   - Fit PCA, Lasso, MCMC selector, VAE  
-   - Concatenate outputs → TabNet meta-learner → TabNet-selected features  
-3. **Layer 2 – Model Training**  
-   - Train RF, XGB, LR, MLP, TabNet on TabNet-selected features  
-   - Hyperparameter tuning via RandomizedSearchCV → GridSearchCV → Optuna  
-4. **Ensembling**  
-   - Generate soft-voting and stacking predictions  
-5. **Validation & Explainability**  
-   - 5-fold CV monitoring, fold-variance analysis, McNemar’s test, bootstrap confidence intervals  
-   - SHAP and feature importance plots  
-6. **Submission**  
-   - Save single-model and ensemble CSVs with `Entry, ProteinClass`  
-
----
-
-## Deliverables
-
-- **Models:** `*.joblib` for each tuned model and Optuna study  
-- **Compressed datasets:** PCA, Lasso, MCMC, VAE outputs, TabNet-selected features  
-- **Predictions:** `y_pred_*.npy` and formatted CSVs  
-- **Reports:** Confusion matrices, classification reports, SHAP plots  
-
-This README captures our updated, layered strategy—leveraging both linear/sparse and nonlinear/manifold views, dynamically fused by TabNet, then ensembled across multiple model paradigms to maximize accuracy and robustness.
+## License
+Please ensure compliance with dataset licenses and CAFA rules when distributing
+models or predictions.
