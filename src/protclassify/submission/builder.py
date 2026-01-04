@@ -1,8 +1,7 @@
-"""Submission helpers for CAFA6-style prediction exports.
+"""Utilities to generate CAFA-compliant submission files.
 
-The competition expects `protein_id`/`GO term`/`score` triples. This
-module keeps submission generation consistent and tracked via a
-lightweight manifest.
+The competition expects `protein_id`/`GO term`/`score` triples. This module
+keeps submission generation consistent and tracked via a lightweight manifest.
 """
 
 from __future__ import annotations
@@ -44,6 +43,40 @@ class SubmissionBuilder:
         self.tracker_path = tracker_path
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.tracker_path.parent.mkdir(parents=True, exist_ok=True)
+        self._rows: list[tuple[str, str, float]] = []
+
+    def add_entry(self, protein_id: str, go_term: str, score: float) -> None:
+        """Append a single CAFA-formatted prediction row."""
+
+        self._rows.append((protein_id, go_term, float(score)))
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Return the accumulated entries as a DataFrame."""
+
+        return pd.DataFrame(self._rows, columns=["Entry", "GO_term", "Score"])
+
+    def save(self, metadata: Optional[SubmissionMetadata] = None, filename: str | None = None) -> Path:
+        """Persist the accumulated rows in CAFA TSV format and log the manifest."""
+
+        df = self.to_dataframe()
+        if df.empty:
+            raise ValueError("No submission rows have been added. Call `add_entry` first.")
+
+        attempt_number = metadata.attempt_number if metadata else self._next_attempt_number()
+        author = metadata.author if metadata else "auto"
+        description = metadata.description if metadata else "auto-generated submission"
+
+        filename = filename or f"{author}_attempt_{attempt_number}.tsv"
+        save_path = self.output_dir / filename
+        df.to_csv(save_path, sep="\t", header=False, index=False)
+
+        tracker_df = self._load_tracker()
+        tracker_entry = SubmissionMetadata(attempt_number=attempt_number, description=description, author=author).to_dict(
+            filename
+        )
+        tracker_df = pd.concat([tracker_df, pd.DataFrame([tracker_entry])], ignore_index=True)
+        tracker_df.to_csv(self.tracker_path, index=False)
+        return save_path
 
     def from_predictions(
         self,
@@ -51,6 +84,8 @@ class SubmissionBuilder:
         entry_df: pd.DataFrame,
         metadata: SubmissionMetadata,
     ) -> Path:
+        """Legacy helper for models that emit class labels directly."""
+
         if "Entry" not in entry_df.columns:
             raise ValueError("Entry column missing in entry_df.")
 
@@ -83,6 +118,12 @@ class SubmissionBuilder:
         if self.tracker_path.exists():
             return pd.read_csv(self.tracker_path)
         return pd.DataFrame(columns=["timestamp", "author", "attempt_number", "filename", "description"])
+
+    def _next_attempt_number(self) -> int:
+        tracker_df = self._load_tracker()
+        if tracker_df.empty:
+            return 1
+        return int(tracker_df["attempt_number"].max()) + 1
 
 
 def create_submission_from_predictions(

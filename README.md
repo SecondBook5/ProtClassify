@@ -16,12 +16,18 @@ optional free text).
 ## Repository structure
 - `src/protclassify/paths.py` – central location for project paths and tracker
   files.
-- `src/protclassify/data/tracking.py` – array storage with manifest metadata via
-  `ArrayMetadata` and `DataTracker`.
-- `src/protclassify/models/registry.py` – model persistence and lookup through
-  `ModelRegistry` and `ModelMetadata`.
+- `src/protclassify/data/` – FASTA parsing (`fasta.py`) and array tracking
+  (`tracking.py`) backed by manifest CSVs.
+- `src/protclassify/features/` – amino-acid composition and dipeptide features
+  for quick baselines when only primary sequences are available.
+- `src/protclassify/models/` – trainable components and registries; includes a
+  logistic-regression one-vs-rest baseline wired for multilabel GO prediction.
+- `src/protclassify/pipelines/` – opinionated pipelines that stitch together
+  data loading, feature computation, modeling, and submission generation.
 - `src/protclassify/submission/builder.py` – CAFA-style submission creators with
   `SubmissionBuilder` and `SubmissionMetadata`.
+- `scripts/train_baseline.py` – CLI entry point to train the baseline and emit a
+  submission TSV in one step.
 - `utils/` – backward-compatible wrappers re-exporting the refactored modules
   for existing notebooks.
 - `processed_data/`, `models/`, `submission/` – tracked artifact locations
@@ -32,27 +38,34 @@ optional free text).
    ```bash
    pip install -r requirements.txt  # or conda env create -f environment.yml
    ```
-2. **Import the new helpers**:
-   ```python
-   from protclassify.data.tracking import DataTracker, ArrayMetadata
-   from protclassify.models.registry import ModelRegistry, ModelMetadata
-   from protclassify.submission.builder import SubmissionBuilder, SubmissionMetadata
+2. **Train the sequence-only baseline and emit a submission**:
+   ```bash
+   python scripts/train_baseline.py data/train_targets.fasta data/train_labels.csv \
+     --id-column Entry --label-column go_terms
    ```
-3. **Track an intermediate array**:
+   The script will:
+   - parse the FASTA targets,
+   - compute amino-acid composition + optional dipeptide features,
+   - train a logistic-regression one-vs-rest classifier,
+   - log metrics/manifests under `models/`, and
+   - write a CAFA-style submission TSV under `submission/`.
+3. **Consume the building blocks in notebooks**:
    ```python
+   from protclassify.data import load_fasta_as_dataframe
+   from protclassify.features import amino_acid_composition, dipeptide_frequencies
+   from protclassify.models.baseline import train_logreg_baseline
+   from protclassify.pipelines import run_baseline
+   ```
+4. **Track an intermediate array**:
+   ```python
+   from protclassify.data import ArrayMetadata, DataTracker
    tracker = DataTracker()
    metadata = ArrayMetadata(name="X_train", featureset="esm2", split="train", version="v1", description="ESM2 embeddings")
    tracker.save_array(array, metadata)
    ```
-4. **Save and reload a tuned model**:
+5. **Generate a CAFA-style submission from predictions**:
    ```python
-   registry = ModelRegistry()
-   meta = ModelMetadata(model_type="xgb", featureset="esm2", optimizer="optuna", scoremetric="f1", version="v1", accuracy=0.67)
-   registry.save(model, meta)
-   best_model = registry.load_best(metric="accuracy")
-   ```
-5. **Generate a CAFA-style submission**:
-   ```python
+   from protclassify.submission.builder import SubmissionBuilder, SubmissionMetadata
    builder = SubmissionBuilder()
    submission_meta = SubmissionMetadata(attempt_number=1, description="Baseline ESM2 + XGBoost")
    builder.from_predictions(y_pred=decoded_labels, entry_df=entry_df, metadata=submission_meta)
