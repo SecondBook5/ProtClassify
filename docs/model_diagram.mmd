@@ -1,0 +1,46 @@
+flowchart TD
+    %% Input Sequence
+    A["Input Sequence: MGAIGL"]
+
+    %% Feature Extraction Branches
+    A --> Pfam["Pfam Domains"]
+    A --> Peptides["peptides.py Descriptors"]
+    A --> ProtBERT["ProtBERT Embedding"]
+    A --> ESM2["ESM2 Embedding"]
+
+    %% peptides.py Descriptor Breakdown
+    Peptides --> Atchley["Atchley Factors"]
+    Peptides --> Kidera["Kidera Factors"]
+    Peptides --> VHSE8["VHSE8 Scores"]
+    Peptides --> BLOSUM["BLOSUM1-10 Projections"]
+
+    %% Combine All Features
+    Atchley --> FeatureVec["Concatenated Feature Vector"]
+    Kidera --> FeatureVec
+    VHSE8 --> FeatureVec
+    BLOSUM --> FeatureVec
+    Pfam --> FeatureVec
+    ProtBERT --> FeatureVec
+    ESM2 --> FeatureVec
+
+    %% Models
+    FeatureVec --> RF["Random Forest"]
+    FeatureVec --> XGB["XGBoost"]
+    FeatureVec --> MLP["Multilayer Perceptron"]
+
+    %% Random Forest and XGBoost Tuning
+    RF --> RSCV["RandomizedSearchCV"]
+    RSCV --> GSCV["GridSearchCV"]
+    GSCV --> Optuna1["Optuna (RF/XGB)"]
+
+    XGB --> RSCV
+
+    %% MLP Direct Optimization
+    MLP --> Optuna2["Optuna (MLP)"]
+
+    %% Ensemble
+    Optuna1 --> Ensemble["Softmax Ensemble"]
+    Optuna2 --> Ensemble
+
+    %% Final Output
+    Ensemble --> Output["Predicted Class: RTK"]

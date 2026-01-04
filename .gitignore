@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Notebooks
+notebooks/.ipynb_checkpoints/
+
+# Environments
+.env
+.venv
+*.env
+
+# OS junk
+.DS_Store
+
+# Logs
+*.log
+archive/
+artifacts/
+data/
+envs/
+notebooks/Book_AJ_Week12/blastp_results/

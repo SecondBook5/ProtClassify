@@ -1,0 +1,9 @@
+Dataset , Model             , Accuracy, Macro F1, Best Params
+Basic   , RandomForest      ,   0.7591,   0.7548, "{'max_depth': None, 'min_samples_leaf': 1, 'min_samples_split': 4, 'n_estimators': 332}"
+Basic   , XGBoost           ,   0.7883,   0.783 , "{'colsample_bytree': 0.8554513354318336, 'learning_rate': 0.21282220359016485, 'max_depth': 3, 'n_estimators': 378, 'subsample': 0.6189917778986304}"
+Basic   , SVC               ,   0.8102,   0.7709, "{'C': 9.943014150666745, 'gamma': 'scale', 'kernel': 'rbf'}"
+Basic   , LogisticRegression,   0.6861,   0.6704, "{'C': 2.4656087880761843, 'penalty': 'l2', 'solver': 'lbfgs'}"
+Advanced, RandomForest      ,   0.854 ,   0.8691, "{'max_depth': 30, 'min_samples_leaf': 2, 'min_samples_split': 7, 'n_estimators': 944}"
+Advanced, XGBoost           ,   0.927 ,   0.9359, "{'colsample_bytree': 0.873164453012448, 'learning_rate': 0.028645296875922953, 'max_depth': 3, 'n_estimators': 734, 'subsample': 0.7723562034547986}"
+Advanced, SVC               ,   0.9343,   0.9308, "{'C': 6.5950934726803165, 'gamma': 'auto', 'kernel': 'rbf'}"
+Advanced, LogisticRegression,   0.9708,   0.9754, "{'C': 0.8604891772546763, 'penalty': 'l2', 'solver': 'lbfgs'}"
