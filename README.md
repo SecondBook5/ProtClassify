@@ -62,6 +62,8 @@ optional free text).
 - Integrate sequence encoders (e.g., ESM/ProtBERT) and ontology propagation.
 - Add training scripts under `src/` for reproducible experiments.
 - Expand evaluation tooling to compute the CAFA-weighted F1 metrics.
+- Follow the detailed roadmap in `docs/CAFA6_IMPROVEMENT_PLAN.md` for
+  data hygiene, modeling, evaluation parity, and submission hardening.
 
 ## License
 Please ensure compliance with dataset licenses and CAFA rules when distributing
