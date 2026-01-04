@@ -30,8 +30,12 @@ optional free text).
   submission TSV in one step.
 - `utils/` – backward-compatible wrappers re-exporting the refactored modules
   for existing notebooks.
+- `data/raw/` – drop the CAFA6 competition download here (see
+  `docs/DATASET_DESCRIPTION.md`).
 - `processed_data/`, `models/`, `submission/` – tracked artifact locations
   (manifests live alongside outputs).
+- `artifacts/legacy/` – quarantined historical notebooks/arrays/models from the
+  pre-refactor code; keep new experiments in the tracked locations above.
 
 ## Getting started
 1. **Install dependencies** (example):
@@ -66,10 +70,16 @@ optional free text).
 5. **Generate a CAFA-style submission from predictions**:
    ```python
    from protclassify.submission.builder import SubmissionBuilder, SubmissionMetadata
-   builder = SubmissionBuilder()
-   submission_meta = SubmissionMetadata(attempt_number=1, description="Baseline ESM2 + XGBoost")
-   builder.from_predictions(y_pred=decoded_labels, entry_df=entry_df, metadata=submission_meta)
-   ```
+  builder = SubmissionBuilder()
+  submission_meta = SubmissionMetadata(attempt_number=1, description="Baseline ESM2 + XGBoost")
+  builder.from_predictions(y_pred=decoded_labels, entry_df=entry_df, metadata=submission_meta)
+  ```
+
+## Data intake for CAFA6
+- Download the Kaggle CAFA6 bundle and place the raw files (e.g.,
+  `train_sequences.fasta`, `train_terms.tsv`, `IA.tsv`) under `data/raw/`.
+- See `docs/DATASET_DESCRIPTION.md` for a concise recap of the files provided by
+  the competition and how they relate to our pipelines.
 
 ## Next steps toward CAFA6
 - Integrate sequence encoders (e.g., ESM/ProtBERT) and ontology propagation.

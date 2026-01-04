@@ -21,6 +21,13 @@ This document summarizes the refactored layout and how artifacts are tracked.
   baseline end-to-end.
 - `utils/` – compatibility wrappers that re-export the new APIs to keep existing
   notebooks running.
+- `data/raw/` – staging area for the CAFA6 download (FASTA, TSV, OBO).
+- `processed_data/` – normalized arrays saved via `DataTracker` with
+  `processed_data/data_tracker.csv`.
+- `models/` – reserved for trained models and `models/model_tracker.csv`.
+- `submission/` – CAFA-style TSV outputs with `submission/submission_tracker.csv`.
+- `artifacts/legacy/` – quarantined historical files from the pre-refactor repo;
+  prefer storing any new work in the directories above.
 
 ## Tracker philosophy
 Every saved artifact is accompanied by a manifest row capturing:
